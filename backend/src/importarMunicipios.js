@@ -3,6 +3,7 @@ const path = require('path');
 const { Pool } = require('pg');
 require('dotenv').config();
 
+
 const pool = new Pool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -25,7 +26,7 @@ async function iniciarImportacao() {
       CREATE TABLE municipios (
         id_municipio INT PRIMARY KEY,
         nome VARCHAR(100) NOT NULL,
-        geom GEOMETRY(MultiPolygon, 4326)
+        geom GEOMETRY(Geometry, 4326)
       );
     `);
     console.log('✅ Tabela "municipios" recriada com a estrutura correta.');
