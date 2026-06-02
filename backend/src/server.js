@@ -1,10 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { Pool } = require('pg');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const frontendPath = path.join(__dirname, '..', '..', 'frontedn');
 
 
 const pool = new Pool({
@@ -16,12 +19,12 @@ const pool = new Pool({
 });
 
 
-app.use(cors()); 
+app.use(cors());
 app.use(express.json());
-
+app.use(express.static(frontendPath));
 
 app.get('/', (req, res) => {
-  res.send('🚀 API do EduMapa PB está online e voando!');
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 
@@ -60,7 +63,12 @@ app.get('/api/municipios', async (req, res) => {
 });
 
 
+app.use((req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`📡 Servidor rodando localmente na porta ${PORT}`);
-  console.log(`🔗 Link para testar os municípios: http://localhost:${PORT}/api/municipios`);
+  console.log(`🔗 Frontend disponível em http://localhost:${PORT}`);
+  console.log(`🔗 API de municípios disponível em http://localhost:${PORT}/api/municipios`);
 });
