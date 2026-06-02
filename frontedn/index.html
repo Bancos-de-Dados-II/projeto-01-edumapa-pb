@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduMapa PB</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ══ TOP BAR ═══════════════════════════════════════ -->
+<header class="top-bar">
+  <div class="logo">
+    <h1>EduMapa PB</h1>
+    <span class="badge">Paraíba</span>
+  </div>
+  <button class="btn-location">
+    <span class="btn-loc-dot"></span> Minha localização
+  </button>
+</header>
+
+<main class="dashboard">
+
+  <!-- ══ SIDEBAR ESQUERDA ══════════════════════════════ -->
+  <aside class="sidebar-left">
+
+    <!-- FILTROS PRIMEIRO -->
+    <div class="s-label">Município</div>
+    <div class="sel-wrap">
+      <select id="sel-mun" class="custom-select">
+        <option value="">Todo o Estado</option>
+      </select>
+    </div>
+    <button class="clear-btn" id="clear-btn">✕ Limpar filtro · ver todo o estado</button>
+
+    <div class="s-label">Etapa de Ensino</div>
+    <div class="sel-wrap">
+      <select id="sel-etapa" class="custom-select">
+        <option value="">Todas as etapas</option>
+        <option value="EI">Educação Infantil</option>
+        <option value="EF">Ensino Fundamental</option>
+        <option value="EM">Ensino Médio</option>
+        <option value="EJA">EJA</option>
+        <option value="EP">Ed. Profissional</option>
+      </select>
+    </div>
+
+    <div class="s-label">Rede de Ensino <span class="hint">(clique para ocultar)</span></div>
+    <div class="rede-list" id="rede-list">
+      <div class="rede-item" data-rede="municipal">
+        <div class="rede-left"><span class="dot municipal"></span>Municipal</div>
+        <span class="rede-cnt" id="cnt-municipal">2.814</span>
+      </div>
+      <div class="rede-item" data-rede="estadual">
+        <div class="rede-left"><span class="dot estadual"></span>Estadual</div>
+        <span class="rede-cnt" id="cnt-estadual">1.203</span>
+      </div>
+      <div class="rede-item" data-rede="federal">
+        <div class="rede-left"><span class="dot federal"></span>Federal</div>
+        <span class="rede-cnt" id="cnt-federal">58</span>
+      </div>
+      <div class="rede-item" data-rede="privada">
+        <div class="rede-left"><span class="dot privada"></span>Privada</div>
+        <span class="rede-cnt" id="cnt-privada">816</span>
+      </div>
+    </div>
+
+    <!-- RESUMO DINÂMICO ABAIXO -->
+    <div class="s-label">Resumo Dinâmico</div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="stat-val" id="sv-escolas">4.891</span>
+        <span class="stat-lbl">Escolas</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val" id="sv-munis">223</span>
+        <span class="stat-lbl">Municípios</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val" id="sv-mats">1,2M</span>
+        <span class="stat-lbl">Matrículas</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val" id="sv-docs">47k</span>
+        <span class="stat-lbl">Docentes</span>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ══ MAPA ══════════════════════════════════════════ -->
+  <div id="map-container">
+    <div id="map"></div>
+
+    <!-- Floating selected city bar (no bottom legend) -->
+    <div class="map-bar" id="map-bar">
+      <span id="map-city">–</span>
+      <div class="map-bar-x" id="map-bar-x" title="Ver todo o estado">✕</div>
+    </div>
+
+    <div class="vis-count" id="vis-count">Selecione um município</div>
+  </div>
+
+  <!-- ══ SIDEBAR DIREITA ══════════════════════════════ -->
+  <aside class="sidebar-right">
+
+    <!-- CHARTS PANEL (padrão) -->
+    <div class="panel-charts" id="panel-charts">
+
+      <div class="s-label" style="margin-top:0">Distribuição por Rede</div>
+      <div class="donut-row" id="donut-row"><!-- filled by JS --></div>
+
+      <div class="s-label">IDEB Médio por Rede</div>
+      <div class="ideb-bars" id="ideb-bars"><!-- filled by JS --></div>
+
+      <div class="s-label">Top Escolas por IDEB</div>
+      <div class="rank-list" id="rank-list"><!-- filled by JS --></div>
+
+    </div>
+
+    <!-- ESCOLA DETAIL PANEL -->
+    <div class="panel-escola" id="panel-escola">
+      <button class="back-btn" id="back-btn">← Voltar aos dados</button>
+      <div id="escola-content"></div>
+    </div>
+
+  </aside>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════════ */
+const STATE_TOTAL = {
+  escolas: 4891, municipios: 223, matriculas: 1200000, docentes: 47000,
+  redes: { municipal: 2814, estadual: 1203, federal: 58, privada: 816 },
+  ideb:  { municipal: 4.2,  estadual: 4.8,  federal: 6.1, privada: 5.5 }
+};
+
+const DEFAULT_MUNICIPIOS = [
+  { id:'joaopessoa',  nome:'João Pessoa',    lat:-7.115, lng:-34.863,
+    escolas:580, matriculas:280000, docentes:12000,
+    redes:{ municipal:320, estadual:140, federal:12, privada:108 },
+    ideb:{ municipal:4.5, estadual:5.0, federal:6.2, privada:5.6 } },
+  { id:'campinagr',   nome:'Campina Grande', lat:-7.230, lng:-35.881,
+    escolas:420, matriculas:185000, docentes:8200,
+    redes:{ municipal:240, estadual:105, federal:8,  privada:67  },
+    ideb:{ municipal:4.3, estadual:4.9, federal:6.0, privada:5.4 } },
+  { id:'sousa',       nome:'Sousa',          lat:-6.760, lng:-38.228,
+    escolas:85,  matriculas:28000,  docentes:1100,
+    redes:{ municipal:50,  estadual:22,  federal:3,  privada:10  },
+    ideb:{ municipal:4.0, estadual:4.4, federal:6.1, privada:5.2 } },
+  { id:'patos',       nome:'Patos',          lat:-7.022, lng:-37.280,
+    escolas:110, matriculas:42000,  docentes:1700,
+    redes:{ municipal:62,  estadual:30,  federal:2,  privada:16  },
+    ideb:{ municipal:4.2, estadual:4.7, federal:5.9, privada:5.3 } },
+  { id:'cajazeiras',  nome:'Cajazeiras',     lat:-6.890, lng:-38.558,
+    escolas:70,  matriculas:22000,  docentes:880,
+    redes:{ municipal:38,  estadual:20,  federal:2,  privada:10  },
+    ideb:{ municipal:3.9, estadual:4.3, federal:5.8, privada:5.0 } },
+  { id:'guarabira',   nome:'Guarabira',      lat:-6.851, lng:-35.490,
+    escolas:65,  matriculas:20000,  docentes:800,
+    redes:{ municipal:36,  estadual:18,  federal:1,  privada:10  },
+    ideb:{ municipal:4.1, estadual:4.5, federal:5.7, privada:5.1 } },
+  { id:'santarita',   nome:'Santa Rita',     lat:-7.121, lng:-34.978,
+    escolas:95,  matriculas:35000,  docentes:1400,
+    redes:{ municipal:55,  estadual:28,  federal:2,  privada:10  },
+    ideb:{ municipal:3.8, estadual:4.2, federal:5.5, privada:4.9 } },
+  { id:'bayeux',      nome:'Bayeux',         lat:-7.133, lng:-34.932,
+    escolas:75,  matriculas:25000,  docentes:1000,
+    redes:{ municipal:44,  estadual:20,  federal:1,  privada:10  },
+    ideb:{ municipal:3.7, estadual:4.1, federal:5.4, privada:4.8 } },
+];
+
+/* deterministic RNG */
+function makeRng(seed) {
+  let s = Math.abs(seed) % 2147483647 || 1;
+  return () => { s = (s * 16807) % 2147483647; return (s-1)/2147483646; };
+}
+
+function genSchools(m) {
+  const rng = makeRng(m.nome.length * 97 + m.escolas * 13 + 7);
+  const keys = ['municipal','estadual','federal','privada'];
+  const tot  = keys.reduce((a,k) => a + m.redes[k], 0);
+  const wts  = keys.map(k => m.redes[k] / tot);
+  const etOpts = [['EI','EF'],['EF'],['EF','EM'],['EM'],['EF','EM']];
+  const pfx = {
+    municipal:['EMEF','EMEI','EM','Escola Municipal'],
+    estadual: ['EE','EEEFM','CEE'],
+    federal:  ['IFPB Campus','CEFET-PB'],
+    privada:  ['Colégio','Instituto','Centro Ed.']
+  };
+  const snms = ['Prof. Antônio Café','José Américo','Pedro Américo','Dom Vital',
+    'Epitácio Pessoa','Castro Pinto','Augusto dos Anjos','das Nações','do Sertão',
+    'Antenor Navarro','Plínio Lemos','Argemiro de Figueiredo','Central','Monteiro Lobato'];
+
+  const count = Math.min(28, m.escolas);
+  return Array.from({length: count}, (_, i) => {
+    let rn=rng(), cum=0, rede='municipal';
+    for(let j=0;j<wts.length;j++){ cum+=wts[j]; if(rn<cum){rede=keys[j];break;} }
+    const p = pfx[rede], nm = p[Math.floor(rng()*p.length)] + ' ' + snms[Math.floor(rng()*snms.length)];
+    const etapas = etOpts[Math.floor(rng()*etOpts.length)];
+    const alunos = Math.floor(rng()*1100)+80;
+    const ideb = (m.ideb[rede] + (rng()-.5)*1.4).toFixed(1);
+    const lat = m.lat + (rng()-.5)*.13;
+    const lng = m.lng + (rng()-.5)*.13;
+    return { id:`${m.id}-${i}`, nome:nm, rede, lat, lng, alunos, ideb, etapas, municipio:m.nome };
+  });
+}
+
+const SCHOOLS = {};
+DEFAULT_MUNICIPIOS.forEach(m => { SCHOOLS[m.id] = genSchools(m); });
+let MUNICIPIOS = DEFAULT_MUNICIPIOS;
+
+/* ═══════════════════════════════════════════════════════
+   APP STATE
+═══════════════════════════════════════════════════════ */
+const app = {
+  municipio: null,
+  escola:    null,
+  etapa:     '',
+  redes:     { municipal:true, estadual:true, federal:true, privada:true }
+};
+
+const COLORS = {
+  municipal:'#a3be8c', estadual:'#d08770', federal:'#88afd4', privada:'#c3a0d6'
+};
+
+const API_BASE = '/api';
+
+function normalizeId(value) {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-_]/g, '');
+}
+
+function getGeometryCenter(geometry) {
+  if (!geometry) return [0, 0];
+  if (geometry.type === 'Point') return geometry.coordinates;
+
+  const coords = [];
+  const addCoords = arr => arr.forEach(item => {
+    if (typeof item[0] === 'number') coords.push(item);
+    else addCoords(item);
+  });
+  addCoords(geometry.coordinates);
+
+  const sum = coords.reduce((acc, coord) => [acc[0] + coord[0], acc[1] + coord[1]], [0, 0]);
+  return [sum[0] / coords.length, sum[1] / coords.length];
+}
+
+async function fetchMunicipiosFromBackend() {
+  try {
+    const response = await fetch(`${API_BASE}/municipios`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data.features) throw new Error('Resposta inválida do backend');
+    return data.features.map(feature => {
+      const name = feature.properties.nome || 'Desconhecido';
+      return {
+        id: normalizeId(feature.properties.id_municipio || name),
+        nome: name,
+        lat: getGeometryCenter(feature.geometry)[1],
+        lng: getGeometryCenter(feature.geometry)[0],
+        geometry: feature.geometry
+      };
+    });
+  } catch (error) {
+    console.error('Erro ao carregar municípios do backend:', error);
+    return [];
+  }
+}
+
+function mergeMunicipios(apiMuns) {
+  return apiMuns.map(apiMuni => {
+    const local = DEFAULT_MUNICIPIOS.find(m => m.nome === apiMuni.nome || m.id === apiMuni.id);
+    if (local) return { ...apiMuni, ...local, id: local.id };
+    return {
+      ...apiMuni,
+      escolas: 40,
+      matriculas: 12000,
+      docentes: 650,
+      redes:{ municipal:20, estadual:15, federal:3, privada:10 },
+      ideb:{ municipal:4.0, estadual:4.5, federal:5.8, privada:5.2 }
+    };
+  });
+}
+
+function populateMunicipioSelect() {
+  const selMun = document.getElementById('sel-mun');
+  selMun.innerHTML = '<option value="">Todo o Estado</option>';
+  MUNICIPIOS.forEach(m => {
+    const o = document.createElement('option');
+    o.value = m.id;
+    o.textContent = m.nome;
+    selMun.appendChild(o);
+  });
+}
+
+async function initApp() {
+  const apiMunicipios = await fetchMunicipiosFromBackend();
+  if (apiMunicipios.length) {
+    MUNICIPIOS = mergeMunicipios(apiMunicipios);
+  } else {
+    MUNICIPIOS = DEFAULT_MUNICIPIOS;
+  }
+  renderMunis();
+  populateMunicipioSelect();
+  updateStats(null);
+  updateCharts(null);
+}
+
+/* ═══════════════════════════════════════════════════════
+   MAP SETUP
+═══════════════════════════════════════════════════════ */
+const map = L.map('map', {
+  zoomControl:false,
+  minZoom: 7,
+  maxZoom: 16,
+  // constrain latitude (Y) between approx. Paraíba bounds, allow full horizontal panning
+  maxBounds: [[-8.5, -180], [-4.0, 180]],
+  maxBoundsViscosity: 0.95,
+  worldCopyJump: true
+}).setView([-7.2,-36.5], 7);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution:'&copy; OpenStreetMap &copy; CARTO',
+  subdomains:'abcd', maxZoom:19
+}).addTo(map);
+
+L.control.zoom({ position:'topright' }).addTo(map);
+
+/* Cluster group for school markers */
+const cluster = L.markerClusterGroup({
+  chunkedLoading: true,
+  maxClusterRadius: 48,
+  iconCreateFunction(c) {
+    const n = c.getChildCount();
+    const sz = n<10?30:n<50?36:42;
+    return L.divIcon({
+      html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:rgba(78,127,255,.82);border:2px solid rgba(78,127,255,.35);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Mono',monospace;font-weight:500;font-size:${n<10?12:11}px">${n}</div>`,
+      className:'', iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
+    });
+  }
+});
+map.addLayer(cluster);
+
+/* Municipality bubble layer */
+const muniLayer = L.layerGroup().addTo(map);
+
+function renderMunis() {
+  const maxEsc = Math.max(...MUNICIPIOS.map(m=>m.escolas)) || 1;
+  muniLayer.clearLayers();
+  MUNICIPIOS.forEach(m => {
+    const r = Math.sqrt(m.escolas/maxEsc)*34+11;
+    const c = L.circleMarker([m.lat,m.lng],{
+      radius:r,
+      fillColor:'#4e7fff', fillOpacity:.17,
+      color:'#4e7fff',     weight:1.5,    opacity:.55
+    });
+    c.bindTooltip(
+      `<strong>${m.nome}</strong><br><span style="color:#5e6480;font-size:11px">${m.escolas.toLocaleString('pt-BR')} escolas · ${(m.matriculas/1000).toFixed(0)}k matrículas</span>`,
+      { className:'muni-tip', direction:'top' }
+    );
+    c.on('click', () => pickMuni(m));
+    muniLayer.addLayer(c);
+  });
+}
+renderMunis();
+
+/* ═══════════════════════════════════════════════════════
+   SELECT MUNICÍPIO
+═══════════════════════════════════════════════════════ */
+function pickMuni(m) {
+  app.municipio = m;
+  app.escola    = null;
+
+  map.flyTo([m.lat,m.lng], 12, { duration:1.1 });
+
+  muniLayer.clearLayers(); // hide bubbles while zoomed in
+
+  showSkel();
+  setTimeout(() => {
+    loadSchools(m);
+    hideSkel();
+    updateStats(m);
+    updateCharts(m);
+  }, 650);
+
+  document.getElementById('map-bar').classList.add('show');
+  document.getElementById('map-city').textContent = m.nome;
+  document.getElementById('sel-mun').value = m.id;
+  document.getElementById('clear-btn').classList.add('show');
+  showCharts();
+}
+
+function clearMuni() {
+  app.municipio = null;
+  app.escola    = null;
+
+  map.flyTo([-7.2,-36.5], 7, { duration:1.1 });
+  cluster.clearLayers();
+  renderMunis();
+
+  document.getElementById('map-bar').classList.remove('show');
+  document.getElementById('sel-mun').value = '';
+  document.getElementById('clear-btn').classList.remove('show');
+  document.getElementById('vis-count').textContent = 'Selecione um município';
+
+  showSkel();
+  setTimeout(() => {
+    hideSkel();
+    updateStats(null);
+    updateCharts(null);
+  }, 400);
+  showCharts();
+}
+
+function loadSchools(m) {
+  cluster.clearLayers();
+  const schools = SCHOOLS[m.id] || [];
+  schools.forEach(s => {
+    if (!app.redes[s.rede]) return;
+    if (app.etapa && !s.etapas.includes(app.etapa)) return;
+    const col = COLORS[s.rede];
+    const icon = L.divIcon({
+      html:`<div style="width:11px;height:11px;border-radius:50%;background:${col};border:2px solid rgba(255,255,255,.25);box-shadow:0 0 7px ${col}99"></div>`,
+      className:'', iconSize:[11,11], iconAnchor:[5.5,5.5]
+    });
+    const mk = L.marker([s.lat,s.lng],{icon});
+    mk.on('click', () => pickEscola(s));
+    cluster.addLayer(mk);
+  });
+  document.getElementById('vis-count').textContent =
+    `${cluster.getLayers().length} escolas visíveis`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SELECT ESCOLA
+═══════════════════════════════════════════════════════ */
+function pickEscola(s) {
+  app.escola = s;
+  document.getElementById('panel-charts').classList.add('hide');
+  document.getElementById('panel-escola').classList.add('show');
+
+  const col = COLORS[s.rede];
+  const eTags = s.etapas.map(e=>`<span class="tag etapa">${e}</span>`).join('');
+  document.getElementById('escola-content').innerHTML = `
+    <div class="esc-card">
+      <h2>${s.nome}</h2>
+      <p class="esc-sub">${s.municipio}</p>
+      <div class="esc-stats">
+        <div class="esc-stat">
+          <span class="v">${Number(s.alunos).toLocaleString('pt-BR')}</span>
+          <span class="l">Alunos</span>
+        </div>
+        <div class="esc-stat">
+          <span class="v" style="color:${col}">${s.ideb}</span>
+          <span class="l">IDEB</span>
+        </div>
+      </div>
+      <div class="tag-row">
+        <span class="tag ${s.rede}">${s.rede[0].toUpperCase()+s.rede.slice(1)}</span>
+        ${eTags}
+      </div>
+    </div>
+  `;
+}
+
+function showCharts() {
+  document.getElementById('panel-escola').classList.remove('show');
+  document.getElementById('panel-charts').classList.remove('hide');
+}
+
+/* ═══════════════════════════════════════════════════════
+   COUNT-UP ANIMATION
+═══════════════════════════════════════════════════════ */
+function countUp(el, to, dur, fmt) {
+  const t0 = performance.now();
+  const from = 0;
+  (function tick(now) {
+    const p = Math.min((now-t0)/dur, 1);
+    const e = 1-Math.pow(1-p,3);
+    el.textContent = fmt(Math.round(from + (to-from)*e));
+    if(p<1) requestAnimationFrame(tick);
+  })(t0);
+}
+
+const fmtN = v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(v>=10000?0:1)+'k' : v.toLocaleString('pt-BR');
+const fmtI = v => v.toLocaleString('pt-BR');
+
+function updateStats(m) {
+  const d = m ? { escolas:m.escolas, municipios:1, matriculas:m.matriculas, docentes:m.docentes, redes:m.redes }
+              : { escolas:STATE_TOTAL.escolas, municipios:STATE_TOTAL.municipios, matriculas:STATE_TOTAL.matriculas, docentes:STATE_TOTAL.docentes, redes:STATE_TOTAL.redes };
+
+  countUp(document.getElementById('sv-escolas'), d.escolas,    820, fmtN);
+  countUp(document.getElementById('sv-munis'),   d.municipios, 780, v=>v.toString());
+  countUp(document.getElementById('sv-mats'),    d.matriculas, 900, fmtN);
+  countUp(document.getElementById('sv-docs'),    d.docentes,   850, fmtN);
+
+  countUp(document.getElementById('cnt-municipal'), d.redes.municipal, 780, fmtI);
+  countUp(document.getElementById('cnt-estadual'),  d.redes.estadual,  800, fmtI);
+  countUp(document.getElementById('cnt-federal'),   d.redes.federal,   760, fmtI);
+  countUp(document.getElementById('cnt-privada'),   d.redes.privada,   820, fmtI);
+}
+
+/* ═══════════════════════════════════════════════════════
+   SKELETON
+═══════════════════════════════════════════════════════ */
+function showSkel() {
+  ['sv-escolas','sv-munis','sv-mats','sv-docs'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.classList.add('skel');
+    el.textContent = '000';
+  });
+}
+function hideSkel() {
+  ['sv-escolas','sv-munis','sv-mats','sv-docs'].forEach(id=>{
+    document.getElementById(id).classList.remove('skel');
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   CHARTS
+═══════════════════════════════════════════════════════ */
+function drawDonut(redes) {
+  const defs = [
+    {key:'municipal', label:'Municipal', color:'#a3be8c'},
+    {key:'estadual',  label:'Estadual',  color:'#d08770'},
+    {key:'federal',   label:'Federal',   color:'#88afd4'},
+    {key:'privada',   label:'Privada',   color:'#c3a0d6'},
+  ];
+  const total = defs.reduce((a,d)=>a+redes[d.key],0);
+  let ang = -Math.PI/2;
+  const cx=72,cy=72,R=62,r=42;
+  let paths='';
+
+  defs.forEach(d=>{
+    const v = redes[d.key]||0;
+    if(!v) return;
+    const a = (v/total)*2*Math.PI;
+    const ea = ang+a;
+    const gap = .03; // small gap between slices
+    const ga = ang+gap, gea = ea-gap;
+    const [x1,y1]=[cx+R*Math.cos(ga),  cy+R*Math.sin(ga)];
+    const [x2,y2]=[cx+R*Math.cos(gea), cy+R*Math.sin(gea)];
+    const [x3,y3]=[cx+r*Math.cos(gea), cy+r*Math.sin(gea)];
+    const [x4,y4]=[cx+r*Math.cos(ga),  cy+r*Math.sin(ga)];
+    const la = a>Math.PI?1:0;
+    paths += `<path d="M${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R},0,${la},1,${x2.toFixed(2)},${y2.toFixed(2)} L${x3.toFixed(2)},${y3.toFixed(2)} A${r},${r},0,${la},0,${x4.toFixed(2)},${y4.toFixed(2)}Z" fill="${d.color}" opacity=".9"/>`;
+    ang = ea;
+  });
+
+  const tf = total>=1e6?(total/1e6).toFixed(1)+'M':total>=1e3?(total/1e3).toFixed(1)+'k':total;
+
+  const svg = `<svg viewBox="0 0 144 144" width="128" height="128" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+    ${paths}
+    <text x="${cx}" y="${cy-5}" text-anchor="middle" fill="#eef0f8" font-size="17" font-weight="600" font-family="'DM Mono',monospace">${tf}</text>
+    <text x="${cx}" y="${cy+12}" text-anchor="middle" fill="#5e6480" font-size="9.5" font-family="'DM Sans',sans-serif">escolas</text>
+  </svg>`;
+
+  const legHtml = defs.map(d=>{
+    const pct = total ? ((redes[d.key]/total)*100).toFixed(0) : 0;
+    return `<div class="leg-row">
+      <div class="leg-name"><span class="dot ${d.key}"></span>${d.label}</div>
+      <span class="leg-pct">${pct}%</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('donut-row').innerHTML =
+    svg + `<div class="donut-legend">${legHtml}</div>`;
+}
+
+function drawIdeb(ideb) {
+  const defs = [
+    {key:'municipal',label:'Municipal',color:'#a3be8c'},
+    {key:'estadual', label:'Estadual', color:'#d08770'},
+    {key:'federal',  label:'Federal',  color:'#88afd4'},
+    {key:'privada',  label:'Privada',  color:'#c3a0d6'},
+  ];
+  const cont = document.getElementById('ideb-bars');
+  cont.innerHTML = defs.map(d=>{
+    const v = ideb[d.key]||0;
+    const pct = (v/10)*100;
+    return `<div class="ideb-row">
+      <div class="ideb-lbl"><span class="dot ${d.key}"></span>${d.label}</div>
+      <div class="ideb-track"><div class="ideb-fill" data-p="${pct}" style="width:0;background:${d.color}"></div></div>
+      <span class="ideb-num">${v.toFixed(1)}</span>
+    </div>`;
+  }).join('');
+  // animate in
+  setTimeout(()=>{
+    cont.querySelectorAll('.ideb-fill').forEach(el=>{
+      el.style.width = el.dataset.p + '%';
+    });
+  },50);
+}
+
+function drawRanking(m) {
+  let schools = m ? (SCHOOLS[m.id]||[]) : Object.values(SCHOOLS).flat();
+  const top5 = schools.slice().sort((a,b)=>parseFloat(b.ideb)-parseFloat(a.ideb)).slice(0,5);
+  const medals = ['🥇','🥈','🥉','4°','5°'];
+  document.getElementById('rank-list').innerHTML = top5.map((s,i)=>`
+    <div class="rank-item" onclick="pickEscola(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+      <span class="rank-num">${medals[i]}</span>
+      <span class="rank-name">${s.nome}</span>
+      <span class="rank-ideb">${s.ideb}</span>
+    </div>
+  `).join('');
+}
+
+function updateCharts(m) {
+  const redes = m ? m.redes : STATE_TOTAL.redes;
+  const ideb  = m ? m.ideb  : STATE_TOTAL.ideb;
+  drawDonut(redes);
+  drawIdeb(ideb);
+  drawRanking(m);
+}
+
+// Initial render
+initApp();
+
+/* ═══════════════════════════════════════════════════════
+   CONTROLS WIRING
+═══════════════════════════════════════════════════════ */
+
+// Populate municipio select
+const selMun = document.getElementById('sel-mun');
+selMun.addEventListener('change', e=>{
+  const id = e.target.value;
+  if(!id){ clearMuni(); return; }
+  const m = MUNICIPIOS.find(m=>m.id===id);
+  if(m) pickMuni(m);
+});
+
+// Clear buttons
+document.getElementById('clear-btn').addEventListener('click', clearMuni);
+document.getElementById('map-bar-x').addEventListener('click', clearMuni);
+
+// Back button
+document.getElementById('back-btn').addEventListener('click', ()=>{
+  app.escola = null;
+  showCharts();
+  updateCharts(app.municipio);
+});
+
+// Etapa filter
+document.getElementById('sel-etapa').addEventListener('change', e=>{
+  app.etapa = e.target.value;
+  if(app.municipio) loadSchools(app.municipio);
+});
+
+// Rede toggle (click hides/shows on map + dims item)
+document.querySelectorAll('.rede-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    const rede = item.dataset.rede;
+    app.redes[rede] = !app.redes[rede];
+    item.classList.toggle('off', !app.redes[rede]);
+    if(app.municipio) loadSchools(app.municipio);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════
+   MAP zoom reset → show municipality bubbles again
+═══════════════════════════════════════════════════════ */
+map.on('zoomend', ()=>{
+  if(app.municipio && map.getZoom() < 10) {
+    cluster.clearLayers();
+    renderMunis();
+    document.getElementById('vis-count').textContent = 'Selecione um município';
+  }
+});
+</script>
+</body>
+</html>
