@@ -11,9 +11,7 @@ if (!fs.existsSync(caminhoEscolasJson)) {
 const listaEscolas = JSON.parse(fs.readFileSync(caminhoEscolasJson, 'utf-8'));
 
 let sqlConteudo = `
--- ===================================================
--- SCRIPT DE INSERÇÃO COMPACTADO (BATCH/MULTI-ROWS)
--- ===================================================
+
 DROP TABLE IF EXISTS escolas CASCADE;
 
 CREATE TABLE escolas (
@@ -34,7 +32,7 @@ CREATE TABLE escolas (
 );
 `;
 
-// Define o tamanho dos blocos (inserir de 500 em 500 reduz drasticamente o tamanho do texto)
+
 const TAMANHO_BLOCO = 500;
 
 for (let i = 0; i < listaEscolas.length; i += TAMANHO_BLOCO) {
@@ -51,7 +49,7 @@ for (let i = 0; i < listaEscolas.length; i += TAMANHO_BLOCO) {
     return `(${escola.id_escola}, '${nomeEscolaEscapado}', ${idMunicipio}, ${escola.rede_ensino}, ${lat}, ${lng}, ${escola.oferece_infantil}, ${escola.oferece_fundamental}, ${escola.oferece_medio}, ${escola.oferece_eja}, ${escola.oferece_profissional}, ${escola.total_matriculas}, ${escola.total_docentes}, ${escola.ideb})`;
   });
 
-  // Junta todas as linhas do bloco separando por vírgula e fecha com ponto e vírgula
+  
   sqlConteudo += linhasValores.join(',\n') + ';\n';
 }
 

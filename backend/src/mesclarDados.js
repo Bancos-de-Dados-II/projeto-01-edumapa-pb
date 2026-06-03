@@ -30,7 +30,7 @@ async function iniciarMesclagem() {
       const idEscola = row.CO_ENTIDADE;
       
       if (idEscola) {
-        // Tratamento seguro para converter as coordenadas em números decimais
+        
         const lat = row.LATITUDE ? parseFloat(row.LATITUDE.toString().replace(',', '.')) : null;
         const lng = row.LONGITUDE ? parseFloat(row.LONGITUDE.toString().replace(',', '.')) : null;
 
@@ -53,7 +53,7 @@ async function iniciarMesclagem() {
       }
     };
 
-    // Tenta primeiro com ponto e vírgula, depois com vírgula se necessário
+    
     await processarCSV(arquivoEscolasPB, ';', mapearLinhaEscola);
     if (Object.keys(bancoEscolas).length === 0) {
       await processarCSV(arquivoEscolasPB, ',', mapearLinhaEscola);

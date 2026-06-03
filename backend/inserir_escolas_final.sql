@@ -1,7 +1,4 @@
 
--- ===================================================
--- SCRIPT DE INSERÇÃO COMPACTADO (BATCH/MULTI-ROWS)
--- ===================================================
 DROP TABLE IF EXISTS escolas CASCADE;
 
 CREATE TABLE escolas (
