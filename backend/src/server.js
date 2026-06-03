@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { Pool } = require('pg');
 require('dotenv').config();
 
@@ -63,6 +64,40 @@ app.get('/api/municipios', async (req, res) => {
 });
 
 
+// endpoint para retornar escolas do JSON (suporta ?municipio=ID)
+function resolveEscolasFile() {
+  const candidates = [
+    path.resolve(__dirname, '..', 'escolas_final_pb.json'),
+    path.resolve(__dirname, '..', '..', 'escolas_final_pb.json'),
+    path.resolve(__dirname, '..', '..', 'backend', 'escolas_final_pb.json')
+  ];
+  return candidates.find(c => fs.existsSync(c));
+}
+
+app.get('/api/escolas', async (req, res) => {
+  try {
+    const arquivo = resolveEscolasFile();
+    if (!arquivo) {
+      console.error('❌ Arquivo de escolas não encontrado em nenhum caminho válido.');
+      return res.status(404).json({ error: 'Arquivo de escolas não encontrado.' });
+    }
+    const txt = fs.readFileSync(arquivo, 'utf8');
+    const lista = JSON.parse(txt);
+
+    const { municipio } = req.query;
+    if (municipio) {
+      const filtro = String(municipio);
+      return res.json(lista.filter(e => String(e.id_municipio) === filtro));
+    }
+
+    res.json(lista);
+  } catch (error) {
+    console.error('❌ Erro ao buscar escolas:', error);
+    res.status(500).json({ error: 'Erro interno do servidor ao buscar escolas.' });
+  }
+});
+
+// catch-all: serve frontend
 app.use((req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
@@ -71,4 +106,5 @@ app.listen(PORT, () => {
   console.log(`📡 Servidor rodando localmente na porta ${PORT}`);
   console.log(`🔗 Frontend disponível em http://localhost:${PORT}`);
   console.log(`🔗 API de municípios disponível em http://localhost:${PORT}/api/municipios`);
+  console.log(`🔗 API de escolas disponível em http://localhost:${PORT}/api/escolas`);
 });
